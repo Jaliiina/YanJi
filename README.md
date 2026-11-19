@@ -2,8 +2,6 @@
 
 面向表格数据的个人科研工作台，将数据整理、研究规划、统计分析、绘图和报告编辑串成一条可追溯的工作流。
 
-**维护者：[Jialin Li · Jaliiina](https://github.com/Jaliiina)**
-
 研迹从处理后的数据表开始。用户选择本次输入、描述研究问题，核对分析方案后提交后台执行，在同一项目中查看图表、结果表和研究报告。原始材料、分析参数、执行记录与结果证据分别保存，方便回溯与复现。
 
 ## 主要功能
@@ -191,6 +189,6 @@ ZIP 复现包包含所选数据、参数、执行代码、结果和依赖；解�
 
 ## 维护与反馈
 
-由 [Jialin Li（Jaliiina）](https://github.com/Jaliiina) 维护。问题反馈请提交至 [Issues](https://github.com/Jaliiina/YanJi/issues)，附上复现步骤和经过脱敏的日志；请勿上传密钥或真实研究数据。
+问题反馈请提交至 [Issues](https://github.com/Jaliiina/YanJi/issues)，附上复现步骤和经过脱敏的日志；请勿上传密钥或真实研究数据。
 
 第三方字体的授权说明见 [OFL.txt](assets/fonts/OFL.txt)。
