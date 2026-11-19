@@ -1,0 +1,25 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+extend-exclude = ["runtime", "raw_data", "frontend", ".tools"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+# These entry points add the local source directory before importing the app.
+"app.py" = ["E402"]
+"worker.py" = ["E402"]
+"scripts/*.py" = ["E402"]
+"tests/conftest.py" = ["E402"]
+# Resource limits and parent monitoring must run before scientific imports.
+"src/yanji/program_runner.py" = ["E402"]
+# Register handlers after shared helpers used by the contrast module are defined.
+"src/yanji/skills/analysis.py" = ["E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["yanji"]
