@@ -1,3 +1,5 @@
+import logging
+
 from flask import Flask, jsonify, request, send_from_directory
 from pydantic import ValidationError
 
@@ -47,7 +49,10 @@ def create_app():
 
     @app.errorhandler(KeyError)
     def missing(error):
-        return jsonify(detail="记录不存在。"), 404
+        if error.args == ("记录不存在",):
+            return jsonify(detail="记录不存在。"), 404
+        logging.getLogger(__name__).error("unhandled KeyError", exc_info=error)
+        return jsonify(detail="服务器内部错误。"), 500
 
     @app.get("/")
     def index():

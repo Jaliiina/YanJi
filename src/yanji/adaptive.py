@@ -732,7 +732,7 @@ def execute(ctx, program, objective, review_results=True):
     cycle = 1
     if state_path.is_file():
         saved = json.loads(state_path.read_text())
-        if saved.get("key") == state_key:
+        if saved.get("key") == state_key and saved.get("runtime_version") == VERSION:
             attempts = saved.get("attempts", [])
             cycle = saved.get("cycle", 0) + 1
             current = current.model_copy(update={"code": saved.get("code", current.code)})

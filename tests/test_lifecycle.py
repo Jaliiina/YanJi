@@ -18,6 +18,34 @@ def short_plan(pid):
     )
 
 
+def test_concurrent_updates_keep_both_fields(example):
+    import threading
+
+    pid = example["id"]
+    barrier = threading.Barrier(2)
+    errors = []
+
+    def write(**patch):
+        barrier.wait()
+        try:
+            db.update(pid, **patch)
+        except Exception as exc:
+            errors.append(exc)
+
+    threads = [
+        threading.Thread(target=write, kwargs={"description": "并发说明"}),
+        threading.Thread(target=write, kwargs={"archived": True}),
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    saved = db.get(pid, "project")
+    assert not errors
+    assert saved["description"] == "并发说明"
+    assert saved["archived"] is True
+
+
 def test_claim_cancel_retry_and_recovery(client, example):
     pid = example["id"]
     plan = short_plan(pid)

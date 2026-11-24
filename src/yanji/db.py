@@ -113,7 +113,9 @@ def list_records(kind, project_id=None):
 
 
 def update(record_id, **patch):
+    """Merge fields after taking the write lock, so concurrent patches are not lost."""
     with session() as db:
+        db.connection().exec_driver_sql("BEGIN IMMEDIATE")
         row = db.get(Record, record_id)
         if row is None:
             raise KeyError("记录不存在")

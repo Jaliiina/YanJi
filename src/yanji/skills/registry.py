@@ -2,6 +2,8 @@
 
 from dataclasses import asdict, dataclass, replace
 
+from ..adaptive import VERSION as PROGRAM_VERSION
+
 
 @dataclass(frozen=True)
 class Spec:
@@ -68,7 +70,7 @@ SPECS = [
         "按研究目标编写分析",
         "现有工具无法表达时，按确认的方法与验收要求生成 Python 分析，隔离执行、检查输出、失败后按原目标修正。",
         "custom",
-        version="1.2.0",
+        version=PROGRAM_VERSION,
     ),
     Spec(
         "prepare_cohort",

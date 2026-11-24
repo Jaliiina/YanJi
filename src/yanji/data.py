@@ -135,15 +135,18 @@ def _table(raw: bytes, options: ImportOptions) -> pd.DataFrame:
             continue
     if text is None:
         raise DataError("无法读取文字编码，请在读取设置中选择编码。")
-    lines = [line for line in text.splitlines()[options.header_row - 1 :] if line.strip()]
+    # Keep the original file line so column errors point at the source row.
     # Preserve '# Pathway' headers. MetaPhlAn version comments are not data.
-    lines = [
-        line
-        for line in lines
-        if not (line.startswith("#") and "\t" not in line and "," not in line)
-    ]
-    if not lines:
+    numbered = []
+    for number, line in enumerate(text.splitlines(), start=1):
+        if number < options.header_row or not line.strip():
+            continue
+        if line.startswith("#") and "\t" not in line and "," not in line:
+            continue
+        numbered.append((number, line))
+    if not numbered:
         raise DataError("文件为空或没有可读取的表头。")
+    lines = [line for _, line in numbered]
     if options.delimiter != "auto":
         delimiter = {"tab": "\t", "comma": ",", "semicolon": ";"}[options.delimiter]
     else:
@@ -160,7 +163,7 @@ def _table(raw: bytes, options: ImportOptions) -> pd.DataFrame:
     if len(set(header)) != len(header) or any(not x for x in header):
         raise DataError("表头包含重复或空列名，请修改后重新上传。")
     rows = []
-    for line_num, row in enumerate(reader, 2):
+    for (line_num, _), row in zip(numbered[1:], reader, strict=True):
         if len(row) != len(header):
             raise DataError(f"第 {line_num} 行有 {len(row)} 列，表头有 {len(header)} 列。")
         rows.append(row)

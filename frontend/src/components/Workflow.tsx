@@ -4,12 +4,6 @@ import { post, request } from "../api";
 import { SourcePicker } from "./AnalysisInputs";
 import { ClarifyForm } from "./ClarifyForm";
 import type { WorkspacePageProps } from "../pages/types";
-export const roles = (skill: string) =>
-  skill === "report"
-    ? "结果整理"
-    : skill === "data_check"
-      ? "数据检查"
-      : "分析";
 export function Workflow({
   detail,
   busy,

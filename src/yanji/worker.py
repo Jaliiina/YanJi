@@ -14,9 +14,23 @@ from sqlalchemy import select
 from . import db
 from .agent import fingerprint
 from .config import runtime_root
+from .preparation import VERSION as PREPARATION_VERSION
 from .skills.registry import CATALOG
 
 STOP = False
+
+
+def signal_group(pid, sig):
+    """Signal a step session and the sandbox processes it started."""
+    try:
+        os.killpg(int(pid), sig)
+    except ProcessLookupError:
+        return
+    except OSError:
+        try:
+            os.kill(int(pid), sig)
+        except OSError:
+            return
 
 
 def event(run_id, kind, message, **data):
@@ -59,7 +73,7 @@ def cache_key(snapshot, step, completed=(), project_id=None):
             "parameters": step["parameters"],
             "program": step.get("program"),
             "upstream": upstream,
-            "preparation_version": "1.0.0",
+            "preparation_version": PREPARATION_VERSION,
         }
     )
 
@@ -165,15 +179,23 @@ def execute_step(run, step, completed, directory, i, total):
                     or db.get(run_id, "run").get("cancel_requested")
                     or time.monotonic() - start > 600
                 ):
-                    os.killpg(process.pid, signal.SIGTERM)
+                    timed_out = time.monotonic() - start > 600
+                    signal_group(process.pid, signal.SIGTERM)
                     try:
                         process.wait(timeout=5)
                     except subprocess.TimeoutExpired:
-                        os.killpg(process.pid, signal.SIGKILL)
+                        signal_group(process.pid, signal.SIGKILL)
                         process.wait()
-                    if time.monotonic() - start > 600:
+                    if timed_out and process.returncode != 0:
                         raise RuntimeError("步骤超过十分钟限制，请缩小数据或参数后重试。")
-                    db.update(run_id, status="interrupted" if STOP else "cancelled")
+                    if process.returncode == 0:
+                        break
+                    db.update(
+                        run_id,
+                        status="interrupted" if STOP else "cancelled",
+                        child_pid=None,
+                        child_spec=None,
+                    )
                     event(run_id, "stopped", "已取消当前步骤，已完成结果保留。")
                     return
                 time.sleep(0.3)
@@ -317,7 +339,7 @@ def recover():
                         ["ps", "-p", str(run["child_pid"]), "-o", "command="], text=True
                     )
                     if "-m yanji.execute" in command and run["child_spec"] in command:
-                        os.kill(run["child_pid"], signal.SIGTERM)
+                        signal_group(run["child_pid"], signal.SIGTERM)
                 except (OSError, subprocess.CalledProcessError):
                     pass
             db.update(

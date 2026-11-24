@@ -29,6 +29,12 @@ def test_reject_invalid(raw, match):
         inspect(raw.encode(), "data.tsv", ImportOptions(kind="taxonomy", unit="counts"))
 
 
+def test_column_error_uses_source_line():
+    raw = "说明\n# metaphlan comment\nID\tA\n001\t1\t2\n"
+    with pytest.raises(DataError, match="第 4 行有 3 列"):
+        inspect(raw.encode(), "shifted.tsv", ImportOptions(kind="table", header_row=3))
+
+
 def test_comments_and_rank():
     raw = (
         b"ID\tA\n#metaphlan4\nk__Bacteria\t100\nk__Bacteria|g__X\t100\nk__Bacteria|g__X|s__Y\t100\n"

@@ -351,6 +351,45 @@ def test_retry_resumes_repaired_program_and_keeps_history(input_table, monkeypat
     assert state2["cycle"] == 2 and len(state2["attempts"]) > len(state["attempts"])
 
 
+def test_stale_runtime_does_not_resume_old_program(input_table, monkeypatch):
+    d = input_table
+    p = program(d)
+    ctx = Context(d["project_id"], "stale-runtime", "s1", agent.snapshot(d["project_id"]), {})
+    seen = []
+
+    def run(program, *args):
+        seen.append(program.code)
+        raise adaptive.ProgramFailure("停住")
+
+    monkeypatch.setattr(adaptive, "run_isolated", run)
+    monkeypatch.setattr(
+        adaptive,
+        "generate",
+        lambda program, *args: program.model_copy(
+            update={"code": program.code + "\nrepair_marker = 1"}
+        ),
+    )
+    with pytest.raises(adaptive.ProgramFailure):
+        adaptive.execute(ctx, p.model_dump(), "原目标")
+    state = json.loads((ctx.directory / "repair_state.json").read_text())
+    state["runtime_version"] = "0.0.0"
+    state["code"] = p.code + "\nstale = True"
+    (ctx.directory / "repair_state.json").write_text(json.dumps(state))
+    monkeypatch.setattr(adaptive, "generate", lambda program, *args: program)
+    with pytest.raises(adaptive.ProgramFailure):
+        adaptive.execute(ctx, p.model_dump(), "原目标")
+    assert "stale = True" not in seen[-1]
+    assert json.loads((ctx.directory / "repair_state.json").read_text())["runtime_version"] == (
+        adaptive.VERSION
+    )
+
+
+def test_custom_analysis_cache_uses_runtime_version():
+    from yanji.skills.registry import CATALOG
+
+    assert CATALOG["custom_analysis"].version == adaptive.VERSION
+
+
 def test_result_only_program_is_generated_without_raw_file_binding(input_table, monkeypatch):
     d = input_table
     spec = program(d).model_dump()

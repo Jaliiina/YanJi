@@ -130,7 +130,6 @@ export interface Clarification {
   action?: "" | "data";
 }
 export type ChatBody = components["schemas"]["ChatRequest"];
-export type ReportBody = components["schemas"]["ReportUpdate"];
 
 export interface Step {
   id: string;
