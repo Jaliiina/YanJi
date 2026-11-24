@@ -112,6 +112,20 @@ def list_records(kind, project_id=None):
         return [serialize(r) for r in db.scalars(stmt.order_by(Record.created_at)).all()]
 
 
+def purge_project(project_id):
+    """Remove the project and every record stored for it."""
+    from sqlalchemy import delete, or_
+
+    with session() as database:
+        database.connection().exec_driver_sql("BEGIN IMMEDIATE")
+        row = database.get(Record, project_id)
+        if row is None or row.kind != "project":
+            raise KeyError("记录不存在")
+        database.execute(
+            delete(Record).where(or_(Record.id == project_id, Record.project_id == project_id))
+        )
+
+
 def update(record_id, **patch):
     """Merge fields after taking the write lock, so concurrent patches are not lost."""
     with session() as db:

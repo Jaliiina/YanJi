@@ -73,10 +73,6 @@ function App() {
     Project,
     "id" | "name"
   > | null>(null);
-  const [deletedProject, setDeletedProject] = useState<Pick<
-    Project,
-    "id" | "name"
-  > | null>(null);
   const [deleteError, setDeleteError] = useState("");
   function askDelete(project: Pick<Project, "id" | "name">) {
     setDeleteError("");
@@ -97,7 +93,6 @@ function App() {
         previous.filter((project) => project.id !== target.id),
       );
       setDeleteTarget(null);
-      setDeletedProject(target);
       setNotice(`已删除项目「${target.name}」。`);
     });
   }
@@ -419,25 +414,6 @@ function App() {
         {notice && (
           <div className="alert info">
             <span>{notice}</span>
-            {deletedProject &&
-              notice === `已删除项目「${deletedProject.name}」。` && (
-                <button
-                  disabled={!!busy}
-                  onClick={() =>
-                    action("restore-project", async () => {
-                      await post(`/projects/${deletedProject.id}/restore`);
-                      const restored = await request<Project[]>("/projects");
-                      setProjects(
-                        restored.filter((project) => !project.synthetic),
-                      );
-                      setNotice(`已恢复项目「${deletedProject.name}」。`);
-                      setDeletedProject(null);
-                    })
-                  }
-                >
-                  撤销删除
-                </button>
-              )}
             <button onClick={() => setNotice("")}>
               <X size={16} />
             </button>
@@ -580,7 +556,7 @@ function App() {
         >
           <p>删除项目「{deleteTarget.name}」？</p>
           <p className="project-delete-note">
-            项目将从列表移除。本地文件和分析记录保留，删除后可撤销。
+            项目、上传文件、分析结果和报告会从本机删除，不能恢复。
           </p>
           {deleteError && (
             <p role="alert" className="small-warning">

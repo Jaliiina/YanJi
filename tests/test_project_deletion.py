@@ -1,12 +1,16 @@
-"""Deleting a project removes it from the workspace and can be undone."""
+"""Deleting a project removes its records and the files kept for it."""
+
+import pytest
 
 from yanji import agent, data, db
+from yanji.config import runtime_root
 from yanji.contracts import ChatRequest, ImportOptions, RunConfirm
 from yanji.flask_routes import confirm_run
 
 
-def test_delete_and_restore_keep_files_and_results(client, project):
+def test_delete_removes_records_and_files(client, project):
     pid = project["id"]
+    kept = client.post("/api/v1/projects", json={"name": "保留的项目"}).json()
     dataset = data.import_bytes(
         pid,
         "samples.tsv",
@@ -22,19 +26,23 @@ def test_delete_and_restore_keep_files_and_results(client, project):
             include_report=False,
         ),
     )
-    before = data.load_frame(dataset)
     response = client.delete(f"/api/v1/projects/{pid}")
-    assert response.status_code == 200 and response.json()["archived"] is True
+    assert response.status_code == 200 and response.json() == {"id": pid, "deleted": True}
     assert pid not in [p["id"] for p in client.get("/api/v1/projects").json()]
-    assert data.load_frame(db.get(dataset["id"], "dataset")).equals(before)
-    assert db.get(plan["id"], "plan")["project_id"] == pid
+    for record_id, kind in (
+        (pid, "project"),
+        (dataset["id"], "dataset"),
+        (plan["id"], "plan"),
+    ):
+        with pytest.raises(KeyError):
+            db.get(record_id, kind)
+    assert not (runtime_root() / "projects" / pid).exists()
+    assert not (runtime_root() / dataset["storage"]).exists()
+    assert client.post(f"/api/v1/projects/{pid}/restore").status_code == 404
     assert (
-        client.post(f"/api/v1/projects/{pid}/runs", json={"plan_id": plan["id"]}).status_code == 409
+        client.post(f"/api/v1/projects/{pid}/runs", json={"plan_id": plan["id"]}).status_code == 404
     )
-    restored = client.post(f"/api/v1/projects/{pid}/restore")
-    assert restored.status_code == 200 and restored.json()["archived"] is False
-    assert pid in [p["id"] for p in client.get("/api/v1/projects").json()]
-    assert data.load_frame(db.get(dataset["id"], "dataset")).equals(before)
+    assert kept["id"] in [p["id"] for p in client.get("/api/v1/projects").json()]
 
 
 def test_delete_blocks_active_analysis_and_preserves_project(client, project):
@@ -62,7 +70,7 @@ def test_delete_blocks_active_analysis_and_preserves_project(client, project):
         assert not db.get(pid, "project")["archived"]
     db.update(run["id"], status="cancelled")
     assert client.delete(f"/api/v1/projects/{pid}").status_code == 200
-    assert client.post(f"/api/v1/projects/{pid}/runs/{run['id']}/retry").status_code == 409
+    assert client.post(f"/api/v1/projects/{pid}/runs/{run['id']}/retry").status_code == 404
 
 
 def test_missing_project_cannot_be_deleted_or_restored(client):

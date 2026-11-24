@@ -2,6 +2,7 @@
 
 import csv
 import json
+import shutil
 import time
 from functools import wraps
 from pathlib import Path
@@ -140,12 +141,24 @@ def project_detail(pid: str):
     }
 
 
+def _project_directory(pid: str):
+    root = (runtime_root() / "projects").resolve()
+    directory = (root / pid).resolve()
+    if not directory.is_relative_to(root) or directory == root:
+        raise HTTPException(404, "记录不存在。")
+    return directory
+
+
 @bp.route("/api/v1/projects/<pid>", methods=["DELETE"])
-def archive_project(pid: str):
+def delete_project(pid: str):
     db.get(pid, "project")
     if any(run["status"] in {"queued", "running"} for run in db.list_records("run", pid)):
         raise HTTPException(409, "项目还有正在执行或等待中的分析，请先停止分析再删除。")
-    return db.update(pid, archived=True)
+    directory = _project_directory(pid)
+    if directory.is_dir():
+        shutil.rmtree(directory)
+    db.purge_project(pid)
+    return {"id": pid, "deleted": True}
 
 
 @bp.route("/api/v1/projects/<pid>/restore", methods=["POST"])
