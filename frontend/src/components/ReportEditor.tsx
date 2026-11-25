@@ -254,7 +254,7 @@ export function ReportEditor({
                       }
                     }}
                   >
-                    {drafting === s.id ? "正在起草…" : "AI 起草本节"}
+                    {drafting === s.id ? "正在起草…" : "起草本节"}
                   </button>
                 </div>
                 {draft?.section === s.id && (
